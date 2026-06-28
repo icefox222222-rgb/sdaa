@@ -13,8 +13,8 @@ SYSTEM_PROMPT = """Ты умный и дружелюбный AI-ассистен
 Будь кратким и по делу."""
 
 # Бесплатные модели с поддержкой изображений
-VISION_MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free"
-TEXT_MODEL = "meta-llama/llama-3.1-8b-instruct:free"
+VISION_MODEL = "meta-llama/llama-3.1-8b-instruct"
+TEXT_MODEL = "meta-llama/llama-3.1-8b-instruct"
 
 HEADERS = {
     "Content-Type": "application/json",
