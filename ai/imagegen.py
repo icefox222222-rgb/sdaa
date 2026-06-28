@@ -1,58 +1,35 @@
 import httpx
+import urllib.parse
+import random
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 async def generate(prompt: str) -> bytes | None:
-    """Генерация через ModelsLab Nano Banana 2 (Gemini 3.1)."""
-    import config
-    api_key = getattr(config, "MODELSLAB_API_KEY", "")
-
-    if not api_key:
-        logger.error("MODELSLAB_API_KEY не задан")
-        return None
-
+    """
+    Генерация через Pollinations.ai
+    Полностью бесплатно, без API ключа.
+    """
     try:
-        payload = {
-            "key": api_key,
-            "prompt": prompt,
-            "negative_prompt": "blurry, bad quality, distorted, ugly",
-            "width": "1024",
-            "height": "1024",
-            "samples": "1",
-            "guidance_scale": 7.5,
-        }
+        encoded = urllib.parse.quote(prompt)
+        seed = random.randint(1, 999999)
+        url = (
+            f"https://image.pollinations.ai/prompt/{encoded}"
+            f"?width=1024&height=1024&seed={seed}&nologo=true"
+        )
+        logger.info(f"Запрос: {url[:80]}")
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                "https://modelslab.com/api/v7/images/text-to-image",
-                json=payload
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            logger.info(f"ModelsLab ответ: {data.get('status')}")
+        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
+            resp = await client.get(url)
+            logger.info(f"Статус: {resp.status_code}, размер: {len(resp.content)} байт")
 
-            if data.get("status") == "success":
-                img_url = data["output"][0]
-                img_resp = await client.get(img_url)
-                img_resp.raise_for_status()
-                return img_resp.content
+            if resp.status_code == 200 and len(resp.content) > 1000:
+                return resp.content
 
-            elif data.get("status") == "processing":
-                import asyncio
-                await asyncio.sleep(15)
-                fetch_url = data.get("fetch_result")
-                fetch_resp = await client.post(fetch_url, json={"key": api_key})
-                fetch_data = fetch_resp.json()
-                if fetch_data.get("status") == "success":
-                    img_url = fetch_data["output"][0]
-                    img_resp = await client.get(img_url)
-                    return img_resp.content
-
-            logger.error(f"Неожиданный ответ: {data}")
+            logger.error(f"Плохой ответ: {resp.status_code}, {len(resp.content)} байт")
             return None
 
     except Exception as e:
-        logger.error(f"Ошибка генерации: {e}")
+        logger.error(f"Ошибка Pollinations: {e}")
         return None
